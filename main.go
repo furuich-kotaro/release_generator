@@ -129,7 +129,7 @@ func mergeBlanch(pulls []*github.PullRequest) error {
 		fmt.Printf("マージ開始[%s: %b/%b]\n", *pr.Head.Ref, i+1, pullsSize)
 
 		req := &github.RepositoryMergeRequest{
-			Base: pr.Base.Ref,
+			Base: &os.Args[1],
 			Head: pr.Head.Ref,
 		}
 		_, _, err := client.Repositories.Merge(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), req)
