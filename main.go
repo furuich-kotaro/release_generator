@@ -82,7 +82,7 @@ func getReleaseBranch() (*github.Branch, error) {
 	client := githubClient()
 	ctx := context.Background()
 
-	b, _, err := client.Repositories.GetBranch(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), os.Args[0])
+	b, _, err := client.Repositories.GetBranch(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), os.Args[1])
 	return b, err
 
 }
@@ -111,7 +111,7 @@ func releasePullRquestList(pulls []*github.PullRequest) []*github.PullRequest {
 		}
 
 		for _, label := range pr.Labels {
-			if *label.Name == os.Args[0] {
+			if *label.Name == os.Args[1] {
 				releasePulls = append(releasePulls, pr)
 			}
 		}
@@ -161,7 +161,7 @@ func createRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 	title := releasePullRquestTitle()
 	body := releasePullRquestBody(pulls)
 	base := os.Getenv("BASEBRANCH")
-	head := os.Args[0]
+	head := os.Args[1]
 
 	req := &github.NewPullRequest{
 		Title: &title,
@@ -195,7 +195,7 @@ func updateRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 }
 
 func releasePullRquestTitle() string {
-	title := "【定期リリース】" + os.Args[0]
+	title := "【定期リリース】" + os.Args[1]
 	return title
 }
 
