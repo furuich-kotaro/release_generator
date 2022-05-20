@@ -43,17 +43,7 @@ func main() {
 	}
 	fmt.Println("完了 #2. リリースブランチにマージ")
 
-	if isReleasePullRequestExsit(releasePullRquests) {
-		_, err := createRleasePullRequest(releasePullRquests)
-
-		if err != nil {
-			fmt.Println("失敗 #3. プルリクエスト作成")
-			fmt.Println(err)
-			return
-		}
-
-		fmt.Println("完了 #3. プルリクエスト作成")
-	} else {
+	if isReleasePullRequestExsit(pullRequests) {
 		_, err := updateRleasePullRequest(releasePullRquests)
 
 		if err != nil {
@@ -63,6 +53,16 @@ func main() {
 		}
 
 		fmt.Println("完了 #3. プルリクエスト更新")
+	} else {
+		_, err := createRleasePullRequest(releasePullRquests)
+
+		if err != nil {
+			fmt.Println("失敗 #3. プルリクエスト作成")
+			fmt.Println(err)
+			return
+		}
+
+		fmt.Println("完了 #3. プルリクエスト作成")
 	}
 }
 
@@ -106,7 +106,6 @@ func releasePullRquestList(pulls []*github.PullRequest) []*github.PullRequest {
 
 	for _, pr := range pulls {
 		if strings.Contains(*pr.Title, "【定期リリース】") {
-			fmt.Println(*pr.Title)
 			continue
 		}
 
@@ -123,11 +122,9 @@ func releasePullRquestList(pulls []*github.PullRequest) []*github.PullRequest {
 func mergeBlanch(pulls []*github.PullRequest) error {
 	client := githubClient()
 	ctx := context.Background()
-	pullsSize := len(pulls)
 
-	for i, pr := range pulls {
-		fmt.Printf("マージ開始[%s: %b/%b]\n", *pr.Head.Ref, i+1, pullsSize)
-
+	for _, pr := range pulls {
+		fmt.Printf("マージ開始[%s]\n", *pr.Head.Ref)
 		req := &github.RepositoryMergeRequest{
 			Base: &os.Args[1],
 			Head: pr.Head.Ref,
@@ -137,8 +134,6 @@ func mergeBlanch(pulls []*github.PullRequest) error {
 		if err != nil {
 			return err
 		}
-
-		fmt.Printf("マージ完了[%s: %b/%b]\n", *pr.Head.Ref, i+1, pullsSize)
 	}
 
 	return nil
