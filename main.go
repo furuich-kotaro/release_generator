@@ -13,13 +13,15 @@ import (
 func main() {
 	_, err := getReleaseBranch()
 	if err != nil {
-		fmt.Println("リリースブランチが存在しません！")
-		fmt.Println(err)
-		return
+		_, err := createNewBranch()
+		if err != nil {
+			fmt.Println("リリースブランチ作成失敗!!")
+			fmt.Println(err)
+			return
+		}
 	}
 
 	pullRequests, err := pullRequestList(nil)
-
 	if err != nil {
 		fmt.Println("失敗 #1. リリースするプルリクエストを取得")
 		fmt.Println(err)
@@ -35,7 +37,6 @@ func main() {
 	fmt.Println("完了 #1. リリースするプルリクエストを取得")
 
 	err = mergeBlanch(releasePullRquests)
-
 	if err != nil {
 		fmt.Println("失敗 #2. リリースブランチにマージ")
 		fmt.Println(err)
@@ -73,18 +74,42 @@ func githubClient() *github.Client {
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
-	client := github.NewClient(tc)
+	c := github.NewClient(tc)
 
-	return client
+	return c
 }
 
 func getReleaseBranch() (*github.Branch, error) {
-	client := githubClient()
+	c := githubClient()
 	ctx := context.Background()
 
-	b, _, err := client.Repositories.GetBranch(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), os.Args[1])
+	b, _, err := c.Repositories.GetBranch(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), os.Args[1])
 	return b, err
+}
 
+func getLatestMainref() (*github.Reference, error) {
+	c := githubClient()
+	ctx := context.Background()
+
+	ref, _, err := c.Git.GetRef(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), "heads/main")
+
+	return ref, err
+}
+
+func createNewBranch() (*github.Reference, error) {
+	c := githubClient()
+	ctx := context.Background()
+	mainRef, err := getLatestMainref()
+
+	if err != nil {
+		return nil, err
+	}
+	newRef := "refs/heads/" + os.Args[1]
+	obj := &github.GitObject{SHA: mainRef.Object.SHA}
+	ref := &github.Reference{Ref: &newRef, Object: obj}
+
+	r, _, err := c.Git.CreateRef(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), ref)
+	return r, err
 }
 
 func pullRequestList(opt *github.PullRequestListOptions) ([]*github.PullRequest, error) {
@@ -94,8 +119,8 @@ func pullRequestList(opt *github.PullRequestListOptions) ([]*github.PullRequest,
 	)
 	tc := oauth2.NewClient(ctx, ts)
 
-	client := github.NewClient(tc)
-	pulls, _, err := client.PullRequests.List(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), opt)
+	c := github.NewClient(tc)
+	pulls, _, err := c.PullRequests.List(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), opt)
 
 	return pulls, err
 
@@ -120,7 +145,7 @@ func releasePullRquestList(pulls []*github.PullRequest) []*github.PullRequest {
 }
 
 func mergeBlanch(pulls []*github.PullRequest) error {
-	client := githubClient()
+	c := githubClient()
 	ctx := context.Background()
 
 	for _, pr := range pulls {
@@ -129,7 +154,7 @@ func mergeBlanch(pulls []*github.PullRequest) error {
 			Base: &os.Args[1],
 			Head: pr.Head.Ref,
 		}
-		_, _, err := client.Repositories.Merge(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), req)
+		_, _, err := c.Repositories.Merge(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), req)
 
 		if err != nil {
 			return err
@@ -150,7 +175,7 @@ func isReleasePullRequestExsit(pulls []*github.PullRequest) bool {
 }
 
 func createRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
-	client := githubClient()
+	c := githubClient()
 	ctx := context.Background()
 
 	title := releasePullRquestTitle()
@@ -165,12 +190,12 @@ func createRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 		Body:  &body,
 	}
 
-	pr, _, err := client.PullRequests.Create(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), req)
+	pr, _, err := c.PullRequests.Create(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), req)
 	return pr, err
 }
 
 func updateRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
-	client := githubClient()
+	c := githubClient()
 	ctx := context.Background()
 
 	title := releasePullRquestTitle()
@@ -181,7 +206,7 @@ func updateRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 			pr.Title = &title
 			pr.Body = &body
 
-			pr, _, err := client.PullRequests.Edit(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), *pr.Number, pr)
+			pr, _, err := c.PullRequests.Edit(ctx, os.Getenv("OWNER"), os.Getenv("REPO"), *pr.Number, pr)
 			return pr, err
 		}
 	}
