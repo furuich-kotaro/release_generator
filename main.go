@@ -12,7 +12,7 @@ import (
 
 func main() {
 	_, err := getReleaseBranch()
-	if err == nil {
+	if err != nil {
 		fmt.Println("リリースブランチが存在しません！")
 		fmt.Println(err)
 		return
