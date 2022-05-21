@@ -11,10 +11,8 @@ import (
 )
 
 func main() {
-	_, err := getReleaseBranch()
-	if err != nil {
-		_, err := createNewBranch()
-		if err != nil {
+	if _, err := getReleaseBranch(); err != nil {
+		if _, err := createNewBranch(); err != nil {
 			fmt.Println("リリースブランチ作成失敗!!")
 			fmt.Println(err)
 			return
@@ -28,15 +26,15 @@ func main() {
 		return
 	}
 
-	releasePullRquests := releasePullRquestList(pullRequests)
+	releasePullRequests := releasePullRequestList(pullRequests)
 
-	if len(releasePullRquests) == 0 {
+	if len(releasePullRequests) == 0 {
 		fmt.Println("対象のプルリクエストが存在しません")
 		return
 	}
 	fmt.Println("完了 #1. リリースするプルリクエストを取得")
 
-	err = mergeBlanch(releasePullRquests)
+	err = mergeBlanch(releasePullRequests)
 	if err != nil {
 		fmt.Println("失敗 #2. リリースブランチにマージ")
 		fmt.Println(err)
@@ -45,7 +43,7 @@ func main() {
 	fmt.Println("完了 #2. リリースブランチにマージ")
 
 	if isReleasePullRequestExsit(pullRequests) {
-		_, err := updateRleasePullRequest(releasePullRquests)
+		_, err := updateReleasePullRequest(releasePullRequests)
 
 		if err != nil {
 			fmt.Println("失敗 #3. プルリクエスト更新")
@@ -55,7 +53,7 @@ func main() {
 
 		fmt.Println("完了 #3. プルリクエスト更新")
 	} else {
-		_, err := createRleasePullRequest(releasePullRquests)
+		_, err := createReleasePullRequest(releasePullRequests)
 
 		if err != nil {
 			fmt.Println("失敗 #3. プルリクエスト作成")
@@ -126,7 +124,7 @@ func pullRequestList(opt *github.PullRequestListOptions) ([]*github.PullRequest,
 
 }
 
-func releasePullRquestList(pulls []*github.PullRequest) []*github.PullRequest {
+func releasePullRequestList(pulls []*github.PullRequest) []*github.PullRequest {
 	var releasePulls []*github.PullRequest
 
 	for _, pr := range pulls {
@@ -174,12 +172,12 @@ func isReleasePullRequestExsit(pulls []*github.PullRequest) bool {
 	return false
 }
 
-func createRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
+func createReleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
 	c := githubClient()
 	ctx := context.Background()
 
-	title := releasePullRquestTitle()
-	body := releasePullRquestBody(pulls)
+	title := releasePullRequestTitle()
+	body := releasePullRequestBody(pulls)
 	base := os.Getenv("BASEBRANCH")
 	head := os.Args[1]
 
@@ -194,12 +192,12 @@ func createRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 	return pr, err
 }
 
-func updateRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
+func updateReleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, error) {
 	c := githubClient()
 	ctx := context.Background()
 
-	title := releasePullRquestTitle()
-	body := releasePullRquestBody(pulls)
+	title := releasePullRequestTitle()
+	body := releasePullRequestBody(pulls)
 
 	for _, pr := range pulls {
 		if strings.Contains(*pr.Title, "【定期リリース】") {
@@ -214,12 +212,11 @@ func updateRleasePullRequest(pulls []*github.PullRequest) (*github.PullRequest, 
 	return nil, nil
 }
 
-func releasePullRquestTitle() string {
-	title := "【定期リリース】" + os.Args[1]
-	return title
+func releasePullRequestTitle() string {
+	return "【定期リリース】" + os.Args[1]
 }
 
-func releasePullRquestBody(pulls []*github.PullRequest) string {
+func releasePullRequestBody(pulls []*github.PullRequest) string {
 	body := "## リリースプルリク一覧\n"
 	for _, pr := range pulls {
 		body += fmt.Sprintf("%v\n%v\n%v\n\n", *pr.Title, *pr.HTMLURL, *pr.Head.Ref)
